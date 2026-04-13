@@ -90,9 +90,9 @@ python index.py    # Xem preview preprocess + chunking (không cần API key)
 3. Chạy `build_index()` và kiểm tra với `list_chunks()`
 
 **Definition of Done:**
-- [ ] Script chạy được, index đủ 5 tài liệu
-- [ ] Mỗi chunk có ít nhất 3 metadata fields: `source`, `section`, `effective_date`
-- [ ] `list_chunks()` cho thấy chunk hợp lý, không bị cắt giữa điều khoản
+- [x] Script chạy được, index đủ 5 tài liệu
+- [x] Mỗi chunk có ít nhất 3 metadata fields: `source`, `section`, `effective_date`
+- [x] `list_chunks()` cho thấy chunk hợp lý, không bị cắt giữa điều khoản
 
 ---
 
@@ -105,9 +105,9 @@ python index.py    # Xem preview preprocess + chunking (không cần API key)
 3. Test `rag_answer()` với 3+ câu hỏi mẫu
 
 **Definition of Done:**
-- [ ] `rag_answer("SLA ticket P1?")` → trả về câu trả lời có citation `[1]`
-- [ ] `rag_answer("ERR-403-AUTH")` → trả về "Không đủ dữ liệu" (abstain)
-- [ ] Output có `sources` field không rỗng
+- [x] `rag_answer("SLA ticket P1?")` → trả về câu trả lời có citation `[1]`
+- [x] `rag_answer("ERR-403-AUTH")` → trả về "Không đủ dữ liệu" (abstain)
+- [x] Output có `sources` field không rỗng
 
 ---
 
@@ -123,9 +123,9 @@ python index.py    # Xem preview preprocess + chunking (không cần API key)
 | **Query Transform** | `transform_query()` | Query dùng alias, tên cũ |
 
 **Definition of Done:**
-- [ ] Variant chạy được end-to-end
-- [ ] Có bảng so sánh baseline vs variant (dùng `compare_retrieval_strategies()`)
-- [ ] Giải thích được vì sao chọn biến đó (ghi vào `docs/tuning-log.md`)
+- [x] Variant chạy được end-to-end (Hybrid Retrieval)
+- [x] Có bảng so sánh baseline vs variant (dùng `compare_retrieval_strategies()`)
+- [x] Giải thích được vì sao chọn biến đó (ghi vào `docs/tuning-log.md`)
 
 **A/B Rule:** Chỉ đổi MỘT biến mỗi lần.
 
