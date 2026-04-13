@@ -60,63 +60,67 @@ def score_faithfulness(
     answer: str,
     chunks_used: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    """
-    Faithfulness: Câu trả lời có bám đúng chứng cứ đã retrieve không?
-    Câu hỏi: Model có tự bịa thêm thông tin ngoài retrieved context không?
+    if not answer or answer.startswith("ERROR") or "PIPELINE_NOT_IMPLEMENTED" in answer:
+        return {"score": 0, "notes": "Pipeline error or not implemented."}
+    if answer.startswith("Tôi xin lỗi") or "Không đủ dữ liệu" in answer:
+        return {"score": 5, "notes": "Abstained appropriately."}
 
-    Thang điểm 1-5:
-      5: Mọi thông tin trong answer đều có trong retrieved chunks
-      4: Gần như hoàn toàn grounded, 1 chi tiết nhỏ chưa chắc chắn
-      3: Phần lớn grounded, một số thông tin có thể từ model knowledge
-      2: Nhiều thông tin không có trong retrieved chunks
-      1: Câu trả lời không grounded, phần lớn là model bịa
+    context = "\n".join([c.get("text", "") for c in chunks_used])
+    prompt = f"""Given these retrieved chunks:
+{context}
 
-    TODO Sprint 4 — Có 2 cách chấm:
+And this answer:
+{answer}
 
-    Cách 1 — Chấm thủ công (Manual, đơn giản):
-        Đọc answer và chunks_used, chấm điểm theo thang trên.
-        Ghi lý do ngắn gọn vào "notes".
+Rate the faithfulness on a scale of 1 to 5.
+5 = completely grounded in the provided context (no hallucination).
+1 = answer contains information completely made up and not in the context.
 
-    Cách 2 — LLM-as-Judge (Tự động, nâng cao):
-        Gửi prompt cho LLM:
-            "Given these retrieved chunks: {chunks}
-             And this answer: {answer}
-             Rate the faithfulness on a scale of 1-5.
-             5 = completely grounded in the provided context.
-             1 = answer contains information not in the context.
-             Output JSON: {'score': <int>, 'reason': '<string>'}"
-
-    Trả về dict với: score (1-5) và notes (lý do)
-    """
-    # TODO Sprint 4: Implement scoring
-    # Tạm thời trả về None (yêu cầu chấm thủ công)
-    return {
-        "score": None,
-        "notes": "TODO: Chấm thủ công hoặc implement LLM-as-Judge",
-    }
+Respond ONLY with a JSON object in this format: {{"score": 5, "reason": "Your reason."}}
+"""
+    try:
+        from rag_answer import call_llm
+        resp = call_llm(prompt)
+        # Parse JSON from response
+        import re
+        json_match = re.search(r'\{.*\}', resp.replace('\n', ' '))
+        if json_match:
+            data = json.loads(json_match.group(0))
+            return {"score": int(data.get("score", 0)), "notes": data.get("reason", "")}
+        return {"score": 3, "notes": "Failed to parse LLM response"}
+    except Exception as e:
+        return {"score": 0, "notes": str(e)}
 
 
 def score_answer_relevance(
     query: str,
     answer: str,
 ) -> Dict[str, Any]:
-    """
-    Answer Relevance: Answer có trả lời đúng câu hỏi người dùng hỏi không?
-    Câu hỏi: Model có bị lạc đề hay trả lời đúng vấn đề cốt lõi không?
+    if not answer or answer.startswith("ERROR") or "PIPELINE_NOT_IMPLEMENTED" in answer:
+        return {"score": 0, "notes": "Pipeline error"}
+    if answer.startswith("Tôi xin lỗi") or "Không đủ dữ liệu" in answer:
+        return {"score": 5, "notes": "Abstained appropriately."}
 
-    Thang điểm 1-5:
-      5: Answer trả lời trực tiếp và đầy đủ câu hỏi
-      4: Trả lời đúng nhưng thiếu vài chi tiết phụ
-      3: Trả lời có liên quan nhưng chưa đúng trọng tâm
-      2: Trả lời lạc đề một phần
-      1: Không trả lời câu hỏi
+    prompt = f"""Rate how well this answer addresses the user's query on a scale of 1 to 5.
+Query: {query}
+Answer: {answer}
 
-    TODO Sprint 4: Implement tương tự score_faithfulness
-    """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_answer_relevance",
-    }
+5 = Answers the query directly and fully.
+1 = Does not answer the query at all or is completely off-topic.
+
+Respond ONLY with a JSON object in this format: {{"score": 5, "reason": "Your reason."}}
+"""
+    try:
+        from rag_answer import call_llm
+        resp = call_llm(prompt)
+        import re
+        json_match = re.search(r'\{.*\}', resp.replace('\n', ' '))
+        if json_match:
+            data = json.loads(json_match.group(0))
+            return {"score": int(data.get("score", 0)), "notes": data.get("reason", "")}
+        return {"score": 3, "notes": "Failed to parse LLM response"}
+    except Exception as e:
+        return {"score": 0, "notes": str(e)}
 
 
 def score_context_recall(
@@ -180,28 +184,33 @@ def score_completeness(
     answer: str,
     expected_answer: str,
 ) -> Dict[str, Any]:
-    """
-    Completeness: Answer có thiếu điều kiện ngoại lệ hoặc bước quan trọng không?
-    Câu hỏi: Answer có bao phủ đủ thông tin so với expected_answer không?
+    if not expected_answer:
+        return {"score": 5, "notes": "No expected answer provided."}
+    if answer.startswith("Tôi xin lỗi") and ("Tôi không biết" in expected_answer or "Không đủ dữ liệu" in expected_answer):
+        return {"score": 5, "notes": "Correctly abstained."}
 
-    Thang điểm 1-5:
-      5: Answer bao gồm đủ tất cả điểm quan trọng trong expected_answer
-      4: Thiếu 1 chi tiết nhỏ
-      3: Thiếu một số thông tin quan trọng
-      2: Thiếu nhiều thông tin quan trọng
-      1: Thiếu phần lớn nội dung cốt lõi
+    prompt = f"""Compare the model's answer with the expected true answer.
+Query: {query}
+Model Answer: {answer}
+Expected Answer: {expected_answer}
 
-    TODO Sprint 4:
-    Option 1 — Chấm thủ công: So sánh answer vs expected_answer và chấm.
-    Option 2 — LLM-as-Judge:
-        "Compare the model answer with the expected answer.
-         Rate completeness 1-5. Are all key points covered?
-         Output: {'score': int, 'missing_points': [str]}"
-    """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_completeness (so sánh với expected_answer)",
-    }
+Rate the completeness 1-5. Are all key points from Expected Answer covered in the Model Answer?
+5 = Fully complete, covers all points.
+1 = Missing major points or completely wrong.
+
+Respond ONLY with a JSON object in this format: {{"score": 5, "reason": "Your reason."}}
+"""
+    try:
+        from rag_answer import call_llm
+        resp = call_llm(prompt)
+        import re
+        json_match = re.search(r'\{.*\}', resp.replace('\n', ' '))
+        if json_match:
+            data = json.loads(json_match.group(0))
+            return {"score": int(data.get("score", 0)), "notes": data.get("reason", "")}
+        return {"score": 3, "notes": "Failed to parse"}
+    except Exception as e:
+        return {"score": 0, "notes": str(e)}
 
 
 # =============================================================================
@@ -486,25 +495,22 @@ if __name__ == "__main__":
         print("Pipeline chưa implement. Hoàn thành Sprint 2 trước.")
         baseline_results = []
 
-    # --- Chạy Variant (sau khi Sprint 3 hoàn thành) ---
-    # TODO Sprint 4: Uncomment sau khi implement variant trong rag_answer.py
-    # print("\n--- Chạy Variant ---")
-    # variant_results = run_scorecard(
-    #     config=VARIANT_CONFIG,
-    #     test_questions=test_questions,
-    #     verbose=True,
-    # )
-    # variant_md = generate_scorecard_summary(variant_results, VARIANT_CONFIG["label"])
-    # (RESULTS_DIR / "scorecard_variant.md").write_text(variant_md, encoding="utf-8")
+    print("\n--- Chạy Variant ---")
+    variant_results = run_scorecard(
+        config=VARIANT_CONFIG,
+        test_questions=test_questions,
+        verbose=True,
+    )
+    variant_md = generate_scorecard_summary(variant_results, VARIANT_CONFIG["label"])
+    (RESULTS_DIR / "scorecard_variant.md").write_text(variant_md, encoding="utf-8")
 
     # --- A/B Comparison ---
-    # TODO Sprint 4: Uncomment sau khi có cả baseline và variant
-    # if baseline_results and variant_results:
-    #     compare_ab(
-    #         baseline_results,
-    #         variant_results,
-    #         output_csv="ab_comparison.csv"
-    #     )
+    if baseline_results and variant_results:
+        compare_ab(
+            baseline_results,
+            variant_results,
+            output_csv="ab_comparison.csv"
+        )
 
     print("\n\nViệc cần làm Sprint 4:")
     print("  1. Hoàn thành Sprint 2 + 3 trước")
