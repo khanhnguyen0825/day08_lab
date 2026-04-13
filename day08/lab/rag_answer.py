@@ -272,10 +272,13 @@ def call_llm(prompt: str) -> str:
     if not api_key:
         return "Lỗi: Chưa cấu hình OPENAI_API_KEY."
 
+    # Xử lý các ký tự ẩn, surrogate không hợp lệ gây lỗi JSON cho phía OpenAI
+    sanitized_prompt = prompt.encode("utf-16", "surrogatepass").decode("utf-16", "ignore")
+
     client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
         model=LLM_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": sanitized_prompt}],
         temperature=0,
         max_tokens=512,
     )
