@@ -230,26 +230,24 @@ def _split_by_size(
 
 def get_embedding(text: str) -> List[float]:
     """
-    Tạo embedding vector cho một đoạn text.
-    Cơ chế tối ưu: Ưu tiên dùng OpenAI, nếu không có API key thì dùng Sentence Transformers.
+    Tạo embedding vector cho một đoạn text sử dụng OpenAI.
+    Yêu cầu: OPENAI_API_KEY trong file .env
     """
+    from openai import OpenAI
     api_key = os.getenv("OPENAI_API_KEY")
     
-    if api_key and api_key.startswith("sk-"):
-        # Option A — OpenAI Embeddings (Nhanh, xịn, cần API key)
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        response = client.embeddings.create(
-            input=text,
-            model="text-embedding-3-small"
-        )
-        return response.data[0].embedding
-    else:
-        # Option B — Sentence Transformers (Chạy local, miễn phí)
-        print("    [!] Không tìm thấy OPENAI_API_KEY hợp lệ, đang dùng SentenceTransformer (Local)...")
-        from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-        return model.encode(text).tolist()
+    if not api_key or not api_key.startswith("sk-"):
+        raise ValueError("Lỗi: Không tìm thấy OPENAI_API_KEY hợp lệ. Hãy kiểm tra file .env.")
+
+    client = OpenAI(api_key=api_key)
+    # Normalize text (OpenAI recommends replacing newlines with spaces)
+    text = text.replace("\n", " ")
+    
+    response = client.embeddings.create(
+        input=[text],
+        model="text-embedding-3-small"
+    )
+    return response.data[0].embedding
 
 
 def build_index(docs_dir: Path = DOCS_DIR, db_dir: Path = CHROMA_DB_DIR) -> None:
