@@ -7,16 +7,16 @@
 
 ## Baseline (Sprint 2)
 
-**Ngày:** ___________  
+**Ngày:** 2026-04-13  
 **Config:**
 ```
 retrieval_mode = "dense"
-chunk_size = _____ tokens
-overlap = _____ tokens
+chunk_size = 400 tokens
+overlap = 80 tokens
 top_k_search = 10
 top_k_select = 3
 use_rerank = False
-llm_model = _____
+llm_model = "gpt-4o-mini"
 ```
 
 **Scorecard Baseline:**
@@ -28,7 +28,7 @@ llm_model = _____
 | Completeness | ? /5 |
 
 **Câu hỏi yếu nhất (điểm thấp):**
-> TODO: Liệt kê 2-3 câu hỏi có điểm thấp nhất và lý do tại sao.
+> TODO (Thành chấm): Liệt kê 2-3 câu hỏi có điểm thấp nhất và lý do tại sao.
 > Ví dụ: "q07 (Approval Matrix) - context recall = 1/5 vì dense bỏ lỡ alias."
 
 **Giả thuyết nguyên nhân (Error Tree):**
@@ -43,16 +43,15 @@ llm_model = _____
 
 ## Variant 1 (Sprint 3)
 
-**Ngày:** ___________  
-**Biến thay đổi:** ___________  
+**Ngày:** 2026-04-13  
+**Biến thay đổi:** Hybrid Search (tích hợp Dense + BM25 Sparse)  
 **Lý do chọn biến này:**
-> TODO: Giải thích theo evidence từ baseline results.
-> Ví dụ: "Chọn hybrid vì q07 (alias query) và q09 (mã lỗi ERR-403) đều thất bại với dense.
-> Corpus có cả ngôn ngữ tự nhiên (policy) lẫn tên riêng/mã lỗi (ticket code, SLA label)."
+> Minh note cho Thành: Đã chọn Hybrid vì một số câu hỏi liên tục thất bại nếu chỉ search dense do có các keyword đặc thù như mã lỗi "ERR-403", từ ngữ viết tắt hoặc "Approval Matrix". Dense search hay bỏ lỡ nhưng BM25 sẽ "catch" được các exact term này.
+> Corpus hiện tại có cả đoạn văn bản dài lẫn tên riêng/mã lỗi (ticket code, SLA label).
 
 **Config thay đổi:**
 ```
-retrieval_mode = "hybrid"   # hoặc biến khác
+retrieval_mode = "hybrid"
 # Các tham số còn lại giữ nguyên như baseline
 ```
 
